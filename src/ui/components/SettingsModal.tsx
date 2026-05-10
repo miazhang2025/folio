@@ -169,15 +169,6 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <p style={{
-          fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 10,
-          color: 'var(--ink-faint)',
-          lineHeight: 1.6,
-        }}>
-          You can also set <span className="im-mono">VITE_ANTHROPIC_KEY</span> in{' '}
-          <span className="im-mono">.env.local</span> for dev builds.
-        </p>
       </div>
     </div>
   )
