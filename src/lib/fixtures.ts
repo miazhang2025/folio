@@ -1,7 +1,7 @@
 // ─── Mock data extracted from folio_mockup.jsx — Mia's actual life as seed ───
 // This is the fixtures file. Dexie hooks fall back to it when the DB is empty.
 
-import type { Node, Dispatch, IgnoredAdvice } from '../data/schema'
+import type { Node, IgnoredAdvice } from '../data/schema'
 
 // ─── Fixture node shape (adds layout position for the mindmap) ───────────────
 export interface FixtureNode extends Omit<Node, 'conversation_ids' | 'created_at' | 'last_synthesized'> {

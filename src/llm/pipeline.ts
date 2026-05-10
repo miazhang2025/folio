@@ -122,7 +122,7 @@ async function synthesizeNode(
  */
 async function validateCluster(
   conversations: Conversation[],
-  nodeLabel: string,
+  _nodeLabel: string,
 ): Promise<{ coherent: boolean; reason: string }> {
   if (conversations.length < VALIDATE_THRESHOLD) return { coherent: true, reason: 'small cluster, skipped' }
 
