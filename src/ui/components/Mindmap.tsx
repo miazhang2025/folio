@@ -32,6 +32,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
   const [layoutNodes, setLayoutNodes] = useState<LayoutNode[]>([])
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
+  const [isPanning, setIsPanning] = useState(false)
   // Target viewport that we lerp toward each rAF tick
   const targetVpRef = useRef<Viewport>({ x: 0, y: 0, scale: 1 })
   const currentVpRef = useRef<Viewport>({ x: 0, y: 0, scale: 1 })
@@ -58,7 +59,9 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
   // Recompute D3-force layout whenever nodes or dims change
   useEffect(() => {
     if (!nodes.length || dims.w < 100) return
-    setLayoutNodes(computeForceLayout(nodes, edges, dims.w, dims.h))
+    const layout = computeForceLayout(nodes, edges, dims.w, dims.h)
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- D3 layout sync
+    setLayoutNodes(layout)
   }, [nodes, edges, dims])
 
   // ── Lerp animation loop ───────────────────────────────────────────────────
@@ -132,6 +135,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
       startVpY: targetVpRef.current.y,
     }
     dragMovedRef.current = false
+    setIsPanning(true)
   }, [])
 
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
@@ -171,7 +175,25 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
     }
     setDragState(null)
     panStartRef.current = null
+    setIsPanning(false)
   }, [dragState, toCanvasCoords, dims])
+
+  const handleZoomIn = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    const vp = targetVpRef.current
+    targetVpRef.current = { ...vp, scale: Math.min(SCALE_MAX, vp.scale * 1.25) }
+  }, [])
+
+  const handleZoomOut = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    const vp = targetVpRef.current
+    targetVpRef.current = { ...vp, scale: Math.max(SCALE_MIN, vp.scale * 0.8) }
+  }, [])
+
+  const handleZoomReset = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    targetVpRef.current = { x: 0, y: 0, scale: 1 }
+  }, [])
 
   const nodeIds = new Set(nodes.map((n) => n.id))
   const visibleEdges = edges.filter(([a, b]) => nodeIds.has(a) && nodeIds.has(b))
@@ -190,11 +212,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
   const isPinned = (id: string) => layoutNodes.find((n) => n.id === id)?.position != null
 
   // Cursor: grabbing when dragging a node or panning; grab when hovering background
-  const svgCursor = dragState
-    ? 'grabbing'
-    : panStartRef.current
-    ? 'grabbing'
-    : 'grab'
+  const svgCursor = (dragState || isPanning) ? 'grabbing' : 'grab'
 
   return (
     <div ref={wrapRef} className="h-canvas" style={{ overflow: 'hidden' }}>
@@ -289,23 +307,18 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
 
         {/* Zoom controls — fixed in SVG space, top-right corner */}
         <g transform={`translate(${dims.w - 56}, 16)`} style={{ pointerEvents: 'all' }}>
-          {([
-            { label: '+', dy: 0,  action: () => { const vp = targetVpRef.current; targetVpRef.current = { ...vp, scale: Math.min(SCALE_MAX, vp.scale * 1.25) } } },
-            { label: '−', dy: 32, action: () => { const vp = targetVpRef.current; targetVpRef.current = { ...vp, scale: Math.max(SCALE_MIN, vp.scale * 0.8) } } },
-            { label: '⌂', dy: 64, action: () => { targetVpRef.current = { x: 0, y: 0, scale: 1 } } },
-          ] as const).map(({ label, dy, action }) => (
-            <g key={label} transform={`translate(0,${dy})`} onClick={(e) => { e.stopPropagation(); action() }} style={{ cursor: 'pointer' }}>
-              <rect width={28} height={26} rx={3}
-                fill="var(--paper)" stroke="var(--rule)" strokeWidth={1} fillOpacity={0.92}
-              />
-              <text
-                x={14} y={17} textAnchor="middle"
-                style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fill: 'var(--ink)', userSelect: 'none', pointerEvents: 'none' }}
-              >
-                {label}
-              </text>
-            </g>
-          ))}
+          <g transform="translate(0,0)" onClick={handleZoomIn} style={{ cursor: 'pointer' }}>
+            <rect width={28} height={26} rx={3} fill="var(--paper)" stroke="var(--rule)" strokeWidth={1} fillOpacity={0.92} />
+            <text x={14} y={17} textAnchor="middle" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fill: 'var(--ink)', userSelect: 'none', pointerEvents: 'none' }}>+</text>
+          </g>
+          <g transform="translate(0,32)" onClick={handleZoomOut} style={{ cursor: 'pointer' }}>
+            <rect width={28} height={26} rx={3} fill="var(--paper)" stroke="var(--rule)" strokeWidth={1} fillOpacity={0.92} />
+            <text x={14} y={17} textAnchor="middle" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fill: 'var(--ink)', userSelect: 'none', pointerEvents: 'none' }}>−</text>
+          </g>
+          <g transform="translate(0,64)" onClick={handleZoomReset} style={{ cursor: 'pointer' }}>
+            <rect width={28} height={26} rx={3} fill="var(--paper)" stroke="var(--rule)" strokeWidth={1} fillOpacity={0.92} />
+            <text x={14} y={17} textAnchor="middle" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fill: 'var(--ink)', userSelect: 'none', pointerEvents: 'none' }}>⌂</text>
+          </g>
         </g>
       </svg>
     </div>

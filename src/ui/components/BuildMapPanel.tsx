@@ -26,9 +26,7 @@ export function BuildMapPanel({ conversationCount }: BuildMapPanelProps) {
       setNodeCount(nodes.length)
 
       setPhase('synthesizing')
-      let done = 0
       await runPipelineAll((d, total, label) => {
-        done = d
         setProgress(label ? `Synthesizing "${label}" (${d + 1}/${total})…` : 'Done')
       })
 

@@ -105,7 +105,7 @@ export async function parseClaudeExportZip(file: File): Promise<{
     parsed = JSON.parse(raw) as AnthropicConversation[]
     if (!Array.isArray(parsed)) throw new Error('conversations.json is not an array')
   } catch (e) {
-    throw new Error(`Failed to parse conversations.json: ${e instanceof Error ? e.message : String(e)}`)
+    throw new Error(`Failed to parse conversations.json: ${e instanceof Error ? e.message : String(e)}`, { cause: e })
   }
 
   const conversations: Conversation[] = []
