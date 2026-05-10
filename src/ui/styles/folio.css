@@ -1,0 +1,626 @@
+@import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,400;0,500;1,400&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&display=swap');
+
+/* ─── CSS custom properties ─────────────────────────────────────────────────── */
+:root {
+  --paper:        #F4EFE4;
+  --paper-deep:   #ECE5D5;
+  --paper-edge:   #DDD3BD;
+  --ink:          #2B2620;
+  --ink-soft:     #5B554B;
+  --ink-faint:    #8A8478;
+  --rule:         #C9BFA8;
+  --accent:       #8B4D2E;
+  --accent-soft:  #B07654;
+  --moss:         #3F5D4A;
+}
+
+/* ─── Base ──────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter Tight', sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+  background-image: radial-gradient(circle at 1px 1px, rgba(43,38,32,0.06) 1px, transparent 0);
+  background-size: 22px 22px;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ─── Typography helpers ────────────────────────────────────────────────────── */
+.h-serif { font-family: 'Newsreader', serif; font-weight: 400; }
+.h-mono  { font-family: 'JetBrains Mono', monospace; }
+
+/* ─── Header ────────────────────────────────────────────────────────────────── */
+.h-header {
+  padding: 22px 36px 18px;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.h-brand {
+  font-family: 'Newsreader', serif;
+  font-size: 28px;
+  letter-spacing: -0.01em;
+  font-style: italic;
+}
+.h-brand::after {
+  content: '·';
+  margin: 0 10px;
+  color: var(--accent);
+}
+.h-brand-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Sync button ───────────────────────────────────────────────────────────── */
+.h-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 10px;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+.h-sync:hover {
+  color: var(--ink);
+  border-color: var(--rule);
+  background: var(--paper-deep);
+}
+.h-sync-icon { display: block; flex-shrink: 0; }
+
+@keyframes h-spin {
+  to { transform: rotate(-360deg); }
+}
+.h-sync-syncing { color: var(--ink-soft); cursor: progress; }
+.h-sync-syncing .h-sync-icon { animation: h-spin 0.9s linear infinite; }
+.h-sync-done { color: var(--accent); border-color: var(--accent-soft); }
+
+/* ─── Tab toolbar ───────────────────────────────────────────────────────────── */
+.h-toolbar {
+  display: flex;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.h-tab {
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  color: var(--ink-soft);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.h-tab:hover  { background: var(--paper-deep); color: var(--ink); }
+.h-tab.active { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+/* ─── Body layout ───────────────────────────────────────────────────────────── */
+.h-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  min-height: 0;
+}
+
+/* ─── Lens filter strip ─────────────────────────────────────────────────────── */
+.h-filters {
+  padding: 14px 36px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  border-bottom: 1px solid var(--rule);
+}
+.h-filter {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+.h-filter:hover   { color: var(--ink-soft); }
+.h-filter.active  { color: var(--ink); border-bottom-color: var(--accent); }
+.h-filter-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+/* ─── Map canvas ────────────────────────────────────────────────────────────── */
+.h-map-wrap {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.h-canvas {
+  flex: 1;
+  position: relative;
+  cursor: grab;
+}
+.h-svg { position: absolute; inset: 0; }
+
+/* ─── Mindmap nodes ─────────────────────────────────────────────────────────── */
+.h-node {
+  cursor: pointer;
+}
+/* hover feedback via ring opacity only — no transform, so nodes stay put */
+.h-node:hover .h-node-pulse { fill-opacity: 0.35; }
+
+.h-node-ring {
+  transition: r 0.4s ease, fill-opacity 0.3s ease;
+}
+.h-node.selected .h-node-ring { fill-opacity: 0.5; }
+
+.h-node-dot { transition: r 0.2s ease; }
+
+.h-node-label {
+  font-family: 'Newsreader', serif;
+  font-size: 13px;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.h-node-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  fill: var(--ink-faint);
+  pointer-events: none;
+  letter-spacing: 0.05em;
+}
+
+/* ─── Mindmap edges ─────────────────────────────────────────────────────────── */
+.h-edge {
+  stroke: var(--rule);
+  stroke-width: 0.8;
+  fill: none;
+  transition: opacity 0.3s ease;
+}
+.h-edge.dim { opacity: 0.25; }
+.h-edge.lit { stroke: var(--accent-soft); stroke-width: 1.2; }
+
+/* ─── Node pulse animation (selected state) ─────────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { r: 14; }
+  50%       { r: 16; }
+}
+.h-node.selected .h-node-pulse { animation: breathe 2.4s ease-in-out infinite; }
+
+/* ─── Stamp button (This week) ──────────────────────────────────────────────── */
+.h-stamp {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  background: transparent;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  padding: 14px 22px;
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 17px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  letter-spacing: 0.01em;
+  transform: rotate(-2deg);
+}
+.h-stamp:hover {
+  background: var(--accent);
+  color: var(--paper);
+  transform: rotate(-2deg) scale(1.03);
+}
+.h-stamp-sub {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  font-style: normal;
+  margin-top: 3px;
+  opacity: 0.7;
+}
+
+/* ─── Note panel (right column) ─────────────────────────────────────────────── */
+.h-panel {
+  background: var(--paper-deep);
+  border-left: 1px solid var(--rule);
+  padding: 32px 28px 40px;
+  overflow-y: auto;
+  position: relative;
+}
+.h-panel::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, transparent 0%, var(--paper-edge) 8%, var(--paper-edge) 92%, transparent 100%);
+}
+.h-note-kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.h-note-title {
+  font-family: 'Newsreader', serif;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  margin-bottom: 6px;
+}
+.h-note-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  letter-spacing: 0.04em;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+.h-note-h {
+  font-family: 'Inter Tight', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 22px 0 10px;
+}
+.h-note-p {
+  font-family: 'Newsreader', serif;
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  margin-bottom: 12px;
+}
+.h-note-q {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  padding: 10px 0 10px 16px;
+  border-left: 2px solid var(--accent);
+  margin-bottom: 10px;
+}
+.h-note-ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 8px 0;
+}
+.h-note-ul .h-note-q {
+  margin-bottom: 6px;
+}
+.h-note-related { margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--rule); }
+.h-related-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+.h-related-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 6px 0;
+  font-family: 'Newsreader', serif;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+  border-bottom: 1px dotted var(--rule);
+  transition: color 0.15s ease;
+}
+.h-related-item:hover         { color: var(--accent); }
+.h-related-item::before       { content: '→'; color: var(--ink-faint); margin-right: 8px; }
+
+/* ─── Import modal ──────────────────────────────────────────────────────────── */
+.im-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(43,38,32,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.im-modal {
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  width: min(520px, 92vw);
+  padding: 36px 40px 32px;
+  position: relative;
+}
+.im-header { margin-bottom: 24px; }
+.im-kicker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.im-title {
+  font-family: 'Newsreader', serif;
+  font-size: 26px;
+  color: var(--ink);
+  margin-bottom: 8px;
+}
+.im-sub {
+  font-family: 'Newsreader', serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.im-mono {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  background: var(--paper-deep);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.im-dropzone {
+  border: 1.5px dashed var(--rule);
+  background: var(--paper-deep);
+  padding: 36px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+  margin-bottom: 20px;
+}
+.im-dropzone:hover { border-color: var(--accent-soft); }
+.im-drop-icon {
+  display: block;
+  font-size: 28px;
+  color: var(--ink-faint);
+  margin-bottom: 10px;
+}
+.im-drop-label {
+  font-family: 'Newsreader', serif;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.im-error {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #9F1239;
+  margin-top: 10px;
+}
+.im-status {
+  padding: 28px 0;
+  text-align: center;
+}
+.im-status-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+}
+.im-result { padding: 8px 0 16px; }
+.im-result-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.im-result-num {
+  font-family: 'Newsreader', serif;
+  font-size: 36px;
+  color: var(--ink);
+  line-height: 1;
+}
+.im-result-label {
+  font-family: 'Newsreader', serif;
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.im-errors-detail {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin: 12px 0;
+}
+.im-next-hint {
+  font-family: 'Newsreader', serif;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--ink-faint);
+  margin: 16px 0 20px;
+}
+.im-close-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.im-close-btn:hover { opacity: 0.85; }
+.im-cancel {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  background: none;
+  border: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+.im-cancel:hover { color: var(--ink); }
+
+/* ─── Weekly dispatch view ──────────────────────────────────────────────────── */
+.h-weekly {
+  padding: 36px 56px 80px;
+  max-width: 720px;
+  margin: 0 auto;
+  overflow-y: auto;
+}
+.h-weekly-range {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+}
+.h-weekly-title {
+  font-family: 'Newsreader', serif;
+  font-size: 38px;
+  font-style: italic;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin-bottom: 24px;
+}
+.h-weekly-narrative {
+  font-family: 'Newsreader', serif;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--ink);
+  margin-bottom: 36px;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--rule);
+}
+.h-weekly-section-label {
+  font-family: 'Inter Tight', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.h-weekly-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+.h-weekly-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--rule);
+  padding: 4px 10px;
+  border-radius: 2px;
+  letter-spacing: 0.04em;
+}
+.h-weekly-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+.h-weekly-node {
+  font-family: 'Newsreader', serif;
+  font-size: 14px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.h-weekly-node-new {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* ─── Ignored advice table ──────────────────────────────────────────────────── */
+.h-ignored-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 40px;
+}
+.h-ignored-table th {
+  font-family: 'Inter Tight', sans-serif;
+  font-weight: 600;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  text-align: left;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--rule);
+}
+.h-ignored-table td {
+  font-family: 'Newsreader', serif;
+  font-size: 14px;
+  color: var(--ink);
+  padding: 12px 0;
+  border-bottom: 1px dotted var(--rule);
+  vertical-align: top;
+}
+.h-ignored-day {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faint);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  padding-right: 16px !important;
+}
+.h-verdict {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 7px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.h-verdict-open        { background: rgba(139,77,46,0.12); color: var(--accent); }
+.h-verdict-principled  { background: rgba(21,128,61,0.12);  color: #15803D; }
+.h-verdict-will-regret { background: rgba(159,18,57,0.12);  color: #9F1239; }

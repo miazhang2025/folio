@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "Folio",
+  "version": "0.1.0",
+  "description": "Turns your Claude conversations into a living knowledge map.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["https://claude.ai/*"],
+  "background": {
+    "service_worker": "src/extension/background.ts",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://claude.ai/*"],
+      "js": ["src/extension/content.ts"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Folio"
+  },
+  "icons": {
+    "16":  "public/icon-16.png",
+    "48":  "public/icon-48.png",
+    "128": "public/icon-128.png"
+  }
+}

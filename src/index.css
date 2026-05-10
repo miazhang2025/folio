@@ -1,0 +1,4 @@
+/* Tailwind base - custom styles live in src/ui/styles/folio.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
