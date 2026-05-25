@@ -198,16 +198,27 @@ export async function runPipeline(nodeId: string, skipValidate = false): Promise
 /**
  * Convenience: run the pipeline for every node in the DB.
  * Runs nodes sequentially to avoid hammering the API.
+ * Per-node errors are caught and logged so a single bad cluster
+ * doesn't halt synthesis for all remaining nodes.
  */
 export async function runPipelineAll(
   onProgress?: (done: number, total: number, nodeLabel: string) => void,
-): Promise<void> {
+): Promise<{ succeeded: number; failed: number }> {
   const nodes = await db.nodes.toArray()
+  let succeeded = 0
+  let failed = 0
   for (let i = 0; i < nodes.length; i++) {
     onProgress?.(i, nodes.length, nodes[i].label)
-    await runPipeline(nodes[i].id)
+    try {
+      await runPipeline(nodes[i].id, true)  // skipValidate: trust the clusterer
+      succeeded++
+    } catch (e) {
+      failed++
+      console.warn(`[Folio] Pipeline failed for node "${nodes[i].label}":`, e)
+    }
   }
   onProgress?.(nodes.length, nodes.length, '')
+  return { succeeded, failed }
 }
 
 // ─── Step 3: Generate the weekly Dispatch ─────────────────────────────────────

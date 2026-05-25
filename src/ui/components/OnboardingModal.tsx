@@ -26,12 +26,11 @@ export function OnboardingModal({ onClose, onImport }: Props) {
   const saveKey = () => {
     const trimmed = apiKey.trim()
     if (!trimmed) return
+    // Always write to localStorage; also write to chrome.storage when available
     localStorage.setItem('anthropic_api_key', trimmed)
-    try {
-      if (typeof chrome !== 'undefined' && chrome.storage) {
-        chrome.storage.local.set({ anthropic_api_key: trimmed }).catch(() => {})
-      }
-    } catch { /* extension context not available */ }
+    if (typeof chrome !== 'undefined' && chrome.storage) {
+      chrome.storage.local.set({ anthropic_api_key: trimmed }).catch(() => {})
+    }
     setKeySaved(true)
   }
 

@@ -9,9 +9,28 @@ import type { FixtureNode, EdgePair } from '../../lib/fixtures'
 const FAMILIES = ['creative', 'work', 'life', 'admin'] as const
 type Family = typeof FAMILIES[number]
 
-/** Build adjacency edges from real node data grouped by family. */
+/** Build adjacency edges from each node's related_node_ids (set by the clusterer).
+ *  Falls back to a family-hub chain when no relationship data is available. */
 function computeEdges(nodes: FixtureNode[]): EdgePair[] {
+  const nodeIds = new Set(nodes.map((n) => n.id))
+  const seen = new Set<string>()
   const edges: EdgePair[] = []
+
+  // Primary: use semantic related_node_ids stored during clustering
+  for (const n of nodes) {
+    if (!n.related_node_ids?.length) continue
+    for (const relId of n.related_node_ids) {
+      if (!nodeIds.has(relId)) continue          // skip filtered-out nodes
+      const key = [n.id, relId].sort().join('|')
+      if (seen.has(key)) continue
+      seen.add(key)
+      edges.push([n.id, relId])
+    }
+  }
+
+  if (edges.length > 0) return edges
+
+  // Fallback: family spine (used when nodes have no related_node_ids yet)
   const byFamily = new Map<string, FixtureNode[]>()
   for (const n of nodes) {
     const arr = byFamily.get(n.family) ?? []
@@ -26,7 +45,6 @@ function computeEdges(nodes: FixtureNode[]): EdgePair[] {
       edges.push([sorted[i].id, sorted[i + 1].id])
     }
   }
-  // Thin cross-family spine connecting each family's hub
   for (let i = 0; i < hubs.length - 1; i++) {
     edges.push([hubs[i].id, hubs[i + 1].id])
   }

@@ -16,6 +16,7 @@ export function BuildMapPanel({ conversationCount }: BuildMapPanelProps) {
   const [phase, setPhase] = useState<Phase>('idle')
   const [progress, setProgress] = useState('')
   const [nodeCount, setNodeCount] = useState(0)
+  const [synthResult, setSynthResult] = useState<{ succeeded: number; failed: number } | null>(null)
   const [error, setError] = useState('')
 
   const handleBuild = async () => {
@@ -26,9 +27,10 @@ export function BuildMapPanel({ conversationCount }: BuildMapPanelProps) {
       setNodeCount(nodes.length)
 
       setPhase('synthesizing')
-      await runPipelineAll((d, total, label) => {
+      const result = await runPipelineAll((d, total, label) => {
         setProgress(label ? `Synthesizing "${label}" (${d + 1}/${total})…` : 'Done')
       })
+      setSynthResult(result)
 
       setPhase('done')
     } catch (e) {
@@ -68,7 +70,11 @@ export function BuildMapPanel({ conversationCount }: BuildMapPanelProps) {
       {phase === 'done' && (
         <div style={{ marginTop: 16 }}>
           <p className="h-note-p">
-            Map built — {nodeCount} nodes. Refresh the page to see your real knowledge map.
+            Map built — {nodeCount} nodes.
+            {synthResult && synthResult.failed > 0 && (
+              <> {synthResult.succeeded}/{nodeCount} notes synthesized ({synthResult.failed} skipped — check console).</>
+            )}
+            {synthResult && synthResult.failed === 0 && <> All notes synthesized.</>}
           </p>
           <button
             className="im-close-btn"
@@ -90,8 +96,7 @@ export function BuildMapPanel({ conversationCount }: BuildMapPanelProps) {
       )}
 
       <p className="h-note-sub" style={{ marginTop: 24, fontSize: 12 }}>
-        Make sure <span className="im-mono">VITE_ANTHROPIC_KEY</span> is set in your{' '}
-        <span className="im-mono">.env.local</span> file.
+        No API key set? Open <strong>Settings ⚙</strong> in the top-right corner.
       </p>
     </aside>
   )

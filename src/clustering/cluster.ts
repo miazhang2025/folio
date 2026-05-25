@@ -49,6 +49,9 @@ Rules:
   - admin: immigration, bureaucracy, legal, taxes, government
 - A node needs at least 2 conversations. Singleton conversations go into the closest thematic node.
 - Aim for 8-25 nodes. Too many nodes makes the map cluttered.
+- For related_node_ids: list 2-4 other node ids that are thematically connected to this node.
+  Think about which topics bleed into each other, share context, or are worked on in parallel.
+  Connections should be bidirectional (if A lists B, B should list A). Aim for a web, not a tree.
 
 Conversations:
 ${JSON.stringify(inputs, null, 2)}
@@ -59,7 +62,8 @@ Reply with a JSON array of nodes, exactly this shape:
     "id": "cassette-jury",
     "label": "Cassette Jury",
     "family": "creative",
-    "conversation_ids": ["uuid1", "uuid2"]
+    "conversation_ids": ["uuid1", "uuid2"],
+    "related_node_ids": ["threejs", "rapier"]
   }
 ]
 
@@ -81,6 +85,7 @@ Only return the JSON array, no explanation.`
     label: string
     family: 'creative' | 'work' | 'life' | 'admin'
     conversation_ids: string[]
+    related_node_ids?: string[]
   }
 
   // If the response was truncated at max_tokens, close the array and drop
@@ -121,6 +126,7 @@ Only return the JSON array, no explanation.`
       label: c.label,
       family: c.family,
       conversation_ids: c.conversation_ids,
+      related_node_ids: c.related_node_ids ?? [],
       recency,
       created_at: now,
       last_synthesized: 0,

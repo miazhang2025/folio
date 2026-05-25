@@ -28,7 +28,7 @@ export async function getClient(): Promise<Anthropic> {
   }
 
   if (!apiKey) {
-    throw new Error('No Anthropic API key found. Enter it in Settings or set VITE_ANTHROPIC_KEY in .env.local')
+    throw new Error('No Anthropic API key found. Open Settings (⚙) and paste your Anthropic API key.')
   }
 
   return new Anthropic({ apiKey, dangerouslyAllowBrowser: true })

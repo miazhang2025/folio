@@ -7,7 +7,8 @@ interface SettingsModalProps {
 const STORAGE_KEY = 'anthropic_api_key'
 
 function readKey(): string {
-  if (typeof chrome !== 'undefined' && chrome.storage) return ''
+  // Always read from localStorage as the canonical source for the web app.
+  // chrome.storage is loaded asynchronously in the useEffect below.
   return localStorage.getItem(STORAGE_KEY) ?? ''
 }
 
@@ -26,20 +27,20 @@ export function SettingsModal({ onClose }: SettingsModalProps) {
 
   function handleSave() {
     const trimmed = key.trim()
+    // Always write to localStorage (web app context)
+    localStorage.setItem(STORAGE_KEY, trimmed)
+    // Also write to chrome.storage when available (extension context)
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.local.set({ [STORAGE_KEY]: trimmed })
-    } else {
-      localStorage.setItem(STORAGE_KEY, trimmed)
+      chrome.storage.local.set({ [STORAGE_KEY]: trimmed }).catch(() => {})
     }
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
   function handleClear() {
+    localStorage.removeItem(STORAGE_KEY)
     if (typeof chrome !== 'undefined' && chrome.storage) {
-      chrome.storage.local.remove(STORAGE_KEY)
-    } else {
-      localStorage.removeItem(STORAGE_KEY)
+      chrome.storage.local.remove(STORAGE_KEY).catch(() => {})
     }
     setKey('')
     setSaved(false)

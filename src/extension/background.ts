@@ -117,13 +117,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 
   if (message.type === 'SYNC') {
-    // Popup-triggered sync: open (or focus) claude.ai so the content script fires
+    // Trigger active sync: send SYNC_ALL to the content script in the claude.ai tab.
+    // If no claude.ai tab is open, open one — the content script will auto-intercept
+    // the initial page load and the user can trigger sync again.
     chrome.tabs.query({ url: 'https://claude.ai/*' }, (tabs) => {
-      if (tabs.length > 0) {
-        sendResponse({ ok: true, message: 'claude.ai tab found — navigate it to reload conversations' })
+      if (tabs.length > 0 && tabs[0].id != null) {
+        const tabId = tabs[0].id
+        chrome.tabs.sendMessage(tabId, { type: 'SYNC_ALL' }, (resp) => {
+          const err = chrome.runtime.lastError
+          if (err) {
+            // Content script not yet ready (tab still loading) — focus the tab
+            chrome.tabs.update(tabId, { active: true })
+            sendResponse({ ok: false, message: 'Tab not ready — open claude.ai and try again' })
+          } else {
+            sendResponse({ ok: true, ...(resp ?? {}) })
+          }
+        })
       } else {
         chrome.tabs.create({ url: 'https://claude.ai/', active: true })
-        sendResponse({ ok: true, message: 'Opened claude.ai' })
+        sendResponse({ ok: true, message: 'Opened claude.ai — sync will start automatically on next trigger' })
       }
     })
     return true

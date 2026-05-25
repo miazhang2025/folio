@@ -24,6 +24,8 @@ function dbNodeToFixture(n: Node, idx: number, total: number): FixtureNode {
     x: n.position ? n.position.x : margin + col * step,
     y: n.position ? n.position.y : margin + row * step,
     position: n.position,
+    manual_edits: n.manual_edits,
+    related_node_ids: n.related_node_ids,
   }
 }
 

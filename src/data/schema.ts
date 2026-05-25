@@ -33,6 +33,7 @@ export interface Node {
   label: string;
   family: 'creative' | 'work' | 'life' | 'admin';
   conversation_ids: string[];
+  related_node_ids?: string[];  // semantically related nodes (from clustering)
   position?: { x: number; y: number };  // user-pinned; null = auto-layout
   recency: 'now' | 'recent' | 'past';
   created_at: number;
