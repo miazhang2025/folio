@@ -19,6 +19,27 @@ const MAX_TOKENS_VALIDATE = 256
 
 const VALIDATE_THRESHOLD = 5  // only run Step 0 when cluster has >= this many convs
 
+// ─── Retry helper ────────────────────────────────────────────────────────────
+// Retries the fn on rate-limit (429) and transient server errors (5xx).
+// Billing / auth errors are not retried — they require user action.
+async function withRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (e: unknown) {
+      const status = (e as { status?: number })?.status
+      const retryable = status === 429 || (status != null && status >= 500)
+      if (retryable && attempt < maxAttempts - 1) {
+        await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, attempt)))
+        continue
+      }
+      throw e
+    }
+  }
+  /* istanbul ignore next */
+  throw new Error('unreachable')
+}
+
 // ─── JSON helpers ────────────────────────────────────────────────────────────
 
 function closeOpenJson(s: string): string {
@@ -88,11 +109,11 @@ async function distillConversation(
     .replace('{{node_label}}', nodeLabel)
     .replace('{{conversation}}', transcript)
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: DISTILL_MODEL,
     max_tokens: MAX_TOKENS_DISTILL,
     messages: [{ role: 'user', content: prompt }],
-  })
+  }))
 
   const raw = response.content.find((b) => b.type === 'text')?.text ?? '{}'
   const data = parseDistillSafe(raw)
@@ -137,11 +158,11 @@ async function synthesizeNode(
     .replace('{{count}}', String(distills.length))
     .replace('{{distills}}', distillsJson)
 
-  const response = await client.messages.create({
+  const response = await withRetry(() => client.messages.create({
     model: SYNTHESIZE_MODEL,
     max_tokens: MAX_TOKENS_SYNTHESIZE,
     messages: [{ role: 'user', content: prompt }],
-  })
+  }))
 
   const markdown = response.content.find((b) => b.type === 'text')?.text ?? ''
 
@@ -224,10 +245,18 @@ export async function runPipeline(nodeId: string, skipValidate = false): Promise
     }
   }
 
-  // Step 1 — distill all conversations in parallel
-  const distills = await Promise.all(
-    conversations.map((c) => distillConversation(c, nodeId, node.label)),
-  )
+  // Step 1 — distill each conversation sequentially so one failure doesn't kill the node
+  const distills: Distill[] = []
+  for (const c of conversations) {
+    try {
+      distills.push(await distillConversation(c, nodeId, node.label))
+    } catch (e) {
+      console.warn(`[Folio] Distill failed for "${c.title}" (node "${node.label}"):`, e)
+    }
+  }
+  if (!distills.length) {
+    throw new Error(`All ${conversations.length} conversations failed to distill for node "${node.label}"`)
+  }
 
   // Step 2 — synthesize
   const note = await synthesizeNode(nodeId, node.label, distills)
@@ -246,22 +275,26 @@ export async function runPipeline(nodeId: string, skipValidate = false): Promise
  */
 export async function runPipelineAll(
   onProgress?: (done: number, total: number, nodeLabel: string) => void,
-): Promise<{ succeeded: number; failed: number }> {
-  const nodes = await db.nodes.toArray()
+  nodeIds?: string[],
+): Promise<{ succeeded: number; failed: number; failedIds: string[] }> {
+  const all = await db.nodes.toArray()
+  const nodes = nodeIds ? all.filter((n) => nodeIds.includes(n.id)) : all
   let succeeded = 0
   let failed = 0
+  const failedIds: string[] = []
   for (let i = 0; i < nodes.length; i++) {
     onProgress?.(i, nodes.length, nodes[i].label)
     try {
-      await runPipeline(nodes[i].id, true)  // skipValidate: trust the clusterer
+      await runPipeline(nodes[i].id, true)
       succeeded++
     } catch (e) {
       failed++
+      failedIds.push(nodes[i].id)
       console.warn(`[Folio] Pipeline failed for node "${nodes[i].label}":`, e)
     }
   }
   onProgress?.(nodes.length, nodes.length, '')
-  return { succeeded, failed }
+  return { succeeded, failed, failedIds }
 }
 
 // ─── Step 3: Generate the weekly Dispatch ─────────────────────────────────────

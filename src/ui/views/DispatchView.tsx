@@ -4,6 +4,7 @@ import { useUIStore } from '../../store/ui'
 import { db } from '../../data/db'
 import { generateDispatch } from '../../llm/pipeline'
 import { WEEKLY, NODES, FAMILY_COLORS } from '../../lib/fixtures'
+import { InlineLoader } from '../components/Loader'
 import type { Dispatch, IgnoredAdvice } from '../../data/schema'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -124,7 +125,7 @@ function RealDispatch({ dispatch }: { dispatch: Dispatch }) {
           disabled={generating}
           onClick={handleRegenerate}
         >
-          {generating ? 'generating…' : '↺ regenerate'}
+          {generating ? <><InlineLoader size={14} /> generating…</> : '↺ regenerate'}
         </button>
       </div>
     </div>
@@ -216,7 +217,7 @@ function FixtureDispatch() {
           disabled={generating}
           onClick={handleGenerate}
         >
-          {generating ? 'generating…' : '✦ generate real dispatch'}
+          {generating ? <><InlineLoader size={14} /> generating…</> : '✦ generate real dispatch'}
         </button>
       </div>
     </div>

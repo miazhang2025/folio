@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { db } from '../../data/db'
 import { parseClaudeExportZip } from '../../lib/import'
+import { Loader } from './Loader'
 import type { Conversation } from '../../data/schema'
 
 interface ImportModalProps {
@@ -100,13 +101,13 @@ export function ImportModal({ onClose, onImported }: ImportModalProps) {
 
         {phase === 'parsing' && (
           <div className="im-status">
-            <p className="im-status-label">Parsing ZIP…</p>
+            <Loader size={72} label="Parsing ZIP…" />
           </div>
         )}
 
         {phase === 'writing' && (
           <div className="im-status">
-            <p className="im-status-label">Writing to local database…</p>
+            <Loader size={72} label="Writing to local database…" />
           </div>
         )}
 

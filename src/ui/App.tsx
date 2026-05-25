@@ -3,6 +3,7 @@ import './styles/folio.css'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { useUIStore } from '../store/ui'
+import { InlineLoader } from './components/Loader'
 import { SyncButton } from './components/SyncButton'
 import { MapView } from './views/MapView'
 import { DispatchView } from './views/DispatchView'
@@ -87,7 +88,7 @@ export default function App() {
             aria-label="Export vault as ZIP"
             style={{ opacity: exportingVault ? 0.6 : 1 }}
           >
-            {exportingVault ? 'exporting…' : '↓ export vault'}
+            {exportingVault ? <><InlineLoader size={14} /> exporting…</> : '↓ export vault'}
           </button>
           <button
             className="h-sync"

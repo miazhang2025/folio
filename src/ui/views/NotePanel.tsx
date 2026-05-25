@@ -5,6 +5,7 @@ import { useNote } from '../hooks/useNote'
 import { db } from '../../data/db'
 import { NODES, EDGES, FAMILY_COLORS } from '../../lib/fixtures'
 import { MarkdownNote } from '../components/MarkdownNote'
+import { InlineLoader } from '../components/Loader'
 import { runPipeline } from '../../llm/pipeline'
 import type { NoteBlock } from '../../lib/fixtures'
 import type { Node } from '../../data/schema'
@@ -293,7 +294,7 @@ export function NotePanel() {
           disabled={synthesizing}
           style={{ opacity: synthesizing ? 0.6 : 1, cursor: synthesizing ? 'progress' : 'pointer' }}
         >
-          {synthesizing ? 'synthesizing…' : '↻ regenerate'}
+          {synthesizing ? <><InlineLoader size={14} /> synthesizing…</> : '↻ regenerate'}
         </button>
         {result.kind === 'markdown' && (
           <button
