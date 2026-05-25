@@ -9,6 +9,7 @@ import type { LayoutNode } from '../../clustering/layout'
 interface MindmapProps {
   nodes: FixtureNode[]
   edges: EdgePair[]
+  onMerge?: (fromId: string, intoId: string) => void
 }
 
 interface DragState {
@@ -20,12 +21,13 @@ interface DragState {
 interface Viewport { x: number; y: number; scale: number }
 interface PanStart { startX: number; startY: number; startVpX: number; startVpY: number }
 
-const DRAG_THRESHOLD = 5   // px before a move is treated as a drag
+const DRAG_THRESHOLD = 5
+const MERGE_RADIUS   = 70   // canvas-space px — how close to trigger merge prompt
 const SCALE_MIN = 0.15
 const SCALE_MAX = 4
-const LERP = 0.12          // fraction to move each frame (lower = smoother/slower)
+const LERP = 0.12
 
-export function Mindmap({ nodes, edges }: MindmapProps) {
+export function Mindmap({ nodes, edges, onMerge }: MindmapProps) {
   const svgRef = useRef<SVGSVGElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [dims, setDims] = useState({ w: 900, h: 640 })
@@ -33,13 +35,13 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
   const [dragState, setDragState] = useState<DragState | null>(null)
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 })
   const [isPanning, setIsPanning] = useState(false)
-  // Target viewport that we lerp toward each rAF tick
+  const [mergeTarget, setMergeTarget] = useState<LayoutNode | null>(null)
+  const [mergePending, setMergePending] = useState<{ from: string; into: string } | null>(null)
+
   const targetVpRef = useRef<Viewport>({ x: 0, y: 0, scale: 1 })
   const currentVpRef = useRef<Viewport>({ x: 0, y: 0, scale: 1 })
   const rafRef = useRef<number | null>(null)
   const panStartRef = useRef<PanStart | null>(null)
-  // Ref tracks whether the current press crossed the drag threshold —
-  // checked in onClick to distinguish click from drag-release.
   const dragMovedRef = useRef(false)
   const { selected, hover, setSelected, setHover } = useUIStore()
 
@@ -64,7 +66,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
     setLayoutNodes(layout)
   }, [nodes, edges, dims])
 
-  // ── Lerp animation loop ───────────────────────────────────────────────────
+  // Lerp animation loop
   useEffect(() => {
     const tick = () => {
       const t = targetVpRef.current
@@ -88,7 +90,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
     return () => { if (rafRef.current != null) cancelAnimationFrame(rafRef.current) }
   }, [])
 
-  // ── Pinch/wheel zoom ──────────────────────────────────────────────────────
+  // Pinch/wheel zoom
   useEffect(() => {
     const el = wrapRef.current
     if (!el) return
@@ -111,13 +113,11 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
     return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
-  // ── Convert client coords → canvas coords (accounting for viewport) ──────
   const toCanvasCoords = useCallback((clientX: number, clientY: number) => {
     if (!wrapRef.current) return { x: 0, y: 0 }
     const rect = wrapRef.current.getBoundingClientRect()
     const mx = clientX - rect.left
     const my = clientY - rect.top
-    // Use current (rendered) viewport for accurate hit position
     const vp = currentVpRef.current
     return {
       x: (mx - vp.x) / vp.scale,
@@ -125,7 +125,6 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
     }
   }, [])
 
-  // ── SVG background pan (mousedown on SVG background, not on a node) ──────
   const handleSVGMouseDown = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (e.target !== svgRef.current && (e.target as SVGElement).closest('.h-node')) return
     panStartRef.current = {
@@ -139,7 +138,6 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
   }, [])
 
   const handleMouseMove = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
-    // ── Node drag ──
     if (dragState) {
       const dx = e.clientX - dragState.startClientX
       const dy = e.clientY - dragState.startClientY
@@ -149,9 +147,18 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
       setLayoutNodes((prev) =>
         prev.map((n) => n.id === dragState.id ? { ...n, px: x, py: y } : n),
       )
+      // Detect nearby node for merge
+      setLayoutNodes((prev) => {
+        const nearby = prev.find((n) => {
+          if (n.id === dragState.id) return false
+          const ddx = n.px - x, ddy = n.py - y
+          return Math.sqrt(ddx * ddx + ddy * ddy) < MERGE_RADIUS
+        }) ?? null
+        setMergeTarget(nearby)
+        return prev
+      })
       return
     }
-    // ── Canvas pan ──
     if (panStartRef.current) {
       const dx = e.clientX - panStartRef.current.startX
       const dy = e.clientY - panStartRef.current.startY
@@ -166,17 +173,27 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
 
   const handleMouseUp = useCallback((e: React.MouseEvent<SVGSVGElement>) => {
     if (dragState && dragMovedRef.current) {
-      // Persist pinned node position; silently ignore fixture nodes
+      if (mergeTarget && onMerge) {
+        // Show inline confirmation instead of persisting position
+        setMergePending({ from: dragState.id, into: mergeTarget.id })
+        setMergeTarget(null)
+        setDragState(null)
+        panStartRef.current = null
+        setIsPanning(false)
+        return
+      }
+      // Persist pinned position; silently ignore fixture nodes
       const { x, y } = toCanvasCoords(e.clientX, e.clientY)
       db.nodes.update(dragState.id, {
         position: { x: x / dims.w, y: y / dims.h },
         manual_edits: { pinned: true },
       }).catch(() => {})
     }
+    setMergeTarget(null)
     setDragState(null)
     panStartRef.current = null
     setIsPanning(false)
-  }, [dragState, toCanvasCoords, dims])
+  }, [dragState, mergeTarget, onMerge, toCanvasCoords, dims])
 
   const handleZoomIn = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -211,8 +228,17 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
 
   const isPinned = (id: string) => layoutNodes.find((n) => n.id === id)?.position != null
 
-  // Cursor: grabbing when dragging a node or panning; grab when hovering background
   const svgCursor = (dragState || isPanning) ? 'grabbing' : 'grab'
+
+  // Screen-space position of a canvas node (for overlay badges)
+  const toScreen = (cx: number, cy: number) => ({
+    x: cx * viewport.scale + viewport.x,
+    y: cy * viewport.scale + viewport.y,
+  })
+
+  const pendingFromNode = mergePending ? nodes.find((n) => n.id === mergePending.from) : null
+  const pendingIntoNode = mergePending ? nodes.find((n) => n.id === mergePending.into) : null
+  const pendingIntoPos  = mergePending ? posMap.get(mergePending.into) : null
 
   return (
     <div ref={wrapRef} className="h-canvas" style={{ overflow: 'hidden' }}>
@@ -227,7 +253,6 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        {/* Viewport transform group */}
         <g transform={`translate(${viewport.x},${viewport.y}) scale(${viewport.scale})`}>
           {/* Edges */}
           <g>
@@ -256,6 +281,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
               const opacity = RECENCY_OPACITY[n.recency] ?? 1
               const isSelected = n.id === selected
               const isDragging = dragState?.id === n.id
+              const isMergeTarget = mergeTarget?.id === n.id
               const dotR = 6 + Math.min(n.count * 0.35, 8)
               const ringR = dotR + 8
 
@@ -278,6 +304,17 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
                   onMouseEnter={() => setHover(n.id)}
                   onMouseLeave={() => setHover(null)}
                 >
+                  {/* Merge-target highlight ring */}
+                  {isMergeTarget && (
+                    <circle
+                      r={ringR + 10}
+                      fill="none"
+                      stroke="var(--accent)"
+                      strokeWidth={2}
+                      strokeDasharray="5 3"
+                      opacity={0.75}
+                    />
+                  )}
                   <circle
                     className="h-node-pulse"
                     r={ringR}
@@ -305,7 +342,7 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
           </g>
         </g>
 
-        {/* Zoom controls — fixed in SVG space, top-right corner */}
+        {/* Zoom controls */}
         <g transform={`translate(${dims.w - 56}, 16)`} style={{ pointerEvents: 'all' }}>
           <g transform="translate(0,0)" onClick={handleZoomIn} style={{ cursor: 'pointer' }}>
             <rect width={28} height={26} rx={3} fill="var(--paper)" stroke="var(--rule)" strokeWidth={1} fillOpacity={0.92} />
@@ -321,6 +358,53 @@ export function Mindmap({ nodes, edges }: MindmapProps) {
           </g>
         </g>
       </svg>
+
+      {/* "Merge here?" badge shown while dragging near a target */}
+      {mergeTarget && dragState && (() => {
+        const tp = posMap.get(mergeTarget.id)
+        if (!tp) return null
+        const sp = toScreen(tp.x, tp.y)
+        return (
+          <div
+            className="h-merge-badge"
+            style={{ left: sp.x, top: sp.y - (mergeTarget ? 44 : 44) * viewport.scale }}
+          >
+            Merge here?
+          </div>
+        )
+      })()}
+
+      {/* Inline merge confirmation */}
+      {mergePending && pendingIntoPos && (
+        <div
+          className="h-merge-confirm"
+          style={{
+            left: toScreen(pendingIntoPos.x, pendingIntoPos.y).x,
+            top: toScreen(pendingIntoPos.x, pendingIntoPos.y).y - 72,
+          }}
+        >
+          <p className="h-merge-confirm-text">
+            Merge <strong>{pendingFromNode?.label}</strong> into <strong>{pendingIntoNode?.label}</strong>?
+          </p>
+          <div className="h-merge-confirm-btns">
+            <button
+              className="h-merge-btn-ok"
+              onClick={() => {
+                onMerge?.(mergePending.from, mergePending.into)
+                setMergePending(null)
+              }}
+            >
+              Merge
+            </button>
+            <button
+              className="h-merge-btn-cancel"
+              onClick={() => setMergePending(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

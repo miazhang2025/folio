@@ -19,16 +19,21 @@ export function computeForceLayout(
   width: number,
   height: number,
 ): LayoutNode[] {
-  // Seed positions: use proportional x/y or pinned position if available
-  const simNodes: (d3.SimulationNodeDatum & LayoutNode)[] = nodes.map((n) => ({
-    ...n,
-    px: n.position ? n.position.x : n.x * width,
-    py: n.position ? n.position.y : n.y * height,
-    x:  n.position ? n.position.x : n.x * width,
-    y:  n.position ? n.position.y : n.y * height,
-    fx: n.position?.x,    // pin nodes that have user-set positions
-    fy: n.position?.y,
-  }))
+  // Seed positions: use proportional x/y or pinned position if available.
+  // position.x/y are normalized (0–1); D3 needs PIXEL values — multiply by dims.
+  const simNodes: (d3.SimulationNodeDatum & LayoutNode)[] = nodes.map((n) => {
+    const px = n.position ? n.position.x * width  : n.x * width
+    const py = n.position ? n.position.y * height : n.y * height
+    return {
+      ...n,
+      px,
+      py,
+      x: px,
+      y: py,
+      fx: n.position ? n.position.x * width  : undefined,
+      fy: n.position ? n.position.y * height : undefined,
+    }
+  })
 
   const simLinks: d3.SimulationLinkDatum<typeof simNodes[number]>[] = edges
     .map(([src, tgt]) => ({

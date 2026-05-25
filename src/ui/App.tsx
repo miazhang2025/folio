@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './styles/folio.css'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
@@ -14,7 +14,7 @@ import { OnboardingModal } from './components/OnboardingModal'
 import { exportVault } from '../lib/vault'
 
 export default function App() {
-  const { view, setView } = useUIStore()
+  const { view, setView, selected, setSelected } = useUIStore()
   const [showImport, setShowImport] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [exportingVault, setExportingVault] = useState(false)
@@ -26,6 +26,21 @@ export default function App() {
   // Detect "conversations imported but no nodes yet" state
   const convCountRaw = useLiveQuery(() => db.conversations.count(), [])
   const nodeCountRaw = useLiveQuery(() => db.nodes.count(), [])
+
+  // Auto-select first real DB node when the currently-selected ID is a fixture placeholder
+  const firstRealNode = useLiveQuery(
+    () => (nodeCountRaw ?? 0) > 0 ? db.nodes.limit(1).first() : undefined,
+    [nodeCountRaw],
+  )
+  const selectedIsReal = useLiveQuery(
+    () => db.nodes.get(selected).then((n) => !!n),
+    [selected],
+  )
+  useEffect(() => {
+    if (firstRealNode && selectedIsReal === false) {
+      setSelected(firstRealNode.id)
+    }
+  }, [firstRealNode, selectedIsReal, setSelected])
   const convCount = convCountRaw ?? 0
   const nodeCount = nodeCountRaw ?? 0
   const needsMapBuild = convCount > 0 && nodeCount === 0

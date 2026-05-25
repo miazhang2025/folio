@@ -12,12 +12,57 @@ const DISTILL_MODEL = 'claude-haiku-4-5'
 const SYNTHESIZE_MODEL = 'claude-opus-4-5'
 const DISPATCH_MODEL = 'claude-haiku-4-5'
 const VALIDATE_MODEL = 'claude-haiku-4-5'
-const MAX_TOKENS_DISTILL = 1024
+const MAX_TOKENS_DISTILL = 2048
 const MAX_TOKENS_SYNTHESIZE = 2048
 const MAX_TOKENS_DISPATCH = 2048
 const MAX_TOKENS_VALIDATE = 256
 
 const VALIDATE_THRESHOLD = 5  // only run Step 0 when cluster has >= this many convs
+
+// ─── JSON helpers ────────────────────────────────────────────────────────────
+
+function closeOpenJson(s: string): string {
+  const stack: string[] = []
+  let inStr = false
+  let escaped = false
+
+  for (const ch of s) {
+    if (escaped) { escaped = false; continue }
+    if (ch === '\\' && inStr) { escaped = true; continue }
+    if (ch === '"') { inStr = !inStr; continue }
+    if (inStr) continue
+    if (ch === '{' || ch === '[') stack.push(ch === '{' ? '}' : ']')
+    else if ((ch === '}' || ch === ']') && stack.length) stack.pop()
+  }
+
+  let result = s.trimEnd()
+  if (inStr) result += '"'
+  result = result.replace(/,\s*$/, '')
+  while (stack.length) result += stack.pop()!
+  return result
+}
+
+function parseDistillSafe(raw: string): DistillData {
+  const fallback: DistillData = {
+    subject: '',
+    decisions: [],
+    facts: [],
+    open_questions: [],
+    advice_not_taken: [],
+    emotional_texture: null,
+  }
+  const jsonStr = raw.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim()
+  try {
+    return JSON.parse(jsonStr) as DistillData
+  } catch {
+    try {
+      return JSON.parse(closeOpenJson(jsonStr)) as DistillData
+    } catch {
+      console.warn('[Folio] distill JSON unrecoverable, using fallback')
+      return fallback
+    }
+  }
+}
 
 // ─── Step 1: Distill a single conversation within a node ─────────────────────
 
@@ -50,9 +95,7 @@ async function distillConversation(
   })
 
   const raw = response.content.find((b) => b.type === 'text')?.text ?? '{}'
-  // Extract JSON from possible markdown code fences
-  const jsonStr = raw.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim()
-  const data = JSON.parse(jsonStr) as DistillData
+  const data = parseDistillSafe(raw)
 
   const distill: Distill = {
     conversation_id: conv.id,

@@ -1,9 +1,11 @@
+import { useCallback } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../data/db'
 import { useUIStore } from '../../store/ui'
 import { useNodes } from '../hooks/useNodes'
 import { EDGES, FAMILY_COLORS } from '../../lib/fixtures'
 import { Mindmap } from '../components/Mindmap'
+import { mergeNodes } from '../../data/queries'
 import type { FixtureNode, EdgePair } from '../../lib/fixtures'
 
 const FAMILIES = ['creative', 'work', 'life', 'admin'] as const
@@ -52,9 +54,14 @@ function computeEdges(nodes: FixtureNode[]): EdgePair[] {
 }
 
 export function MapView() {
-  const { filter, setFilter, setView } = useUIStore()
+  const { filter, setFilter, setView, setSelected } = useUIStore()
   const nodes = useNodes()
   const realNodeCount = useLiveQuery(() => db.nodes.count(), []) ?? 0
+
+  const handleMerge = useCallback(async (fromId: string, intoId: string) => {
+    await mergeNodes(fromId, intoId)
+    setSelected(intoId)
+  }, [setSelected])
 
   return (
     <div className="h-map-wrap">
@@ -86,7 +93,11 @@ export function MapView() {
       </div>
 
       {/* Mindmap canvas */}
-      <Mindmap nodes={nodes} edges={realNodeCount > 0 ? computeEdges(nodes) : EDGES} />
+      <Mindmap
+        nodes={nodes}
+        edges={realNodeCount > 0 ? computeEdges(nodes) : EDGES}
+        onMerge={realNodeCount > 0 ? handleMerge : undefined}
+      />
 
       {/* Dispatch stamp */}
       <button className="h-stamp" onClick={() => setView('weekly')}>

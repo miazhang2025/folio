@@ -221,6 +221,66 @@ body {
 }
 .h-node.selected .h-node-pulse { animation: breathe 2.4s ease-in-out infinite; }
 
+/* ─── Merge badges ──────────────────────────────────────────────────────────── */
+.h-merge-badge {
+  position: absolute;
+  transform: translateX(-50%);
+  background: var(--accent);
+  color: var(--paper);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 3px 8px;
+  border-radius: 3px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0.92;
+}
+
+.h-merge-confirm {
+  position: absolute;
+  transform: translateX(-50%);
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  z-index: 20;
+  white-space: nowrap;
+}
+.h-merge-confirm-text {
+  font-family: 'Newsreader', serif;
+  font-size: 13px;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+.h-merge-confirm-btns {
+  display: flex;
+  gap: 8px;
+}
+.h-merge-btn-ok {
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.h-merge-btn-cancel {
+  background: transparent;
+  color: var(--ink-faint);
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
 /* ─── Stamp button (This week) ──────────────────────────────────────────────── */
 .h-stamp {
   position: absolute;
